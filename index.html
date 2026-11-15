@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VitalOrbit: Astronaut Health Monitor</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="text-slate-100">
+<header class="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+    <h1 class="flex items-center gap-2 text-xl font-bold"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><circle cx="16" cy="16" r="6" fill="url(#lg)"/><ellipse cx="16" cy="16" rx="14" ry="5.5" fill="none" stroke="url(#lg)" stroke-width="1.8" transform="rotate(-25 16 16)"/><circle cx="27" cy="9.5" r="2.2" fill="#e8eefc"/></svg>VitalOrbit</h1>
+    <span class="hidden text-xs text-slate-400 lg:inline">Self-care and early warning for deep-space crews</span>
+    <span id="overall" class="pill none">No data</span>
+    <div class="ml-auto flex items-center gap-4 text-sm text-slate-300">
+      <span id="hStreak"></span><span id="hXp"></span>
+    </div>
+  </div>
+  <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2" aria-label="Sections">
+    <button class="tab on" data-tab="dash">Body status</button>
+    <button class="tab" data-tab="log">Log and trends</button>
+    <button class="tab" data-tab="adv">Early warning</button>
+    <button class="tab" data-tab="ground">Ground station</button>
+    <button class="tab" data-tab="learn">Learn and rewards</button>
+  </nav>
+</header>
+
+<div id="banner" class="mx-auto max-w-6xl px-4 pt-3" aria-live="polite"></div>
+<main class="mx-auto max-w-6xl p-4">
+  <!-- 1. Body map -->
+  <section id="tab-dash" class="grid gap-4 md:grid-cols-2">
+    <div id="hero" class="card md:col-span-2"></div>
+    <div class="card flex flex-col items-center">
+      <h2 class="self-start">Select a body system</h2>
+      <svg id="body" viewBox="0 0 200 400" class="h-[430px]" role="group" aria-label="Interactive body map">
+        <circle class="halo" cx="100" cy="205" r="192"/>
+        <circle data-sys="neuro" cx="100" cy="45" r="31"/>
+        <rect data-sys="cardio" x="62" y="85" width="76" height="70" rx="26"/>
+        <rect data-sys="meta" x="66" y="158" width="68" height="62" rx="22"/>
+        <rect data-sys="msk" x="30" y="90" width="24" height="130" rx="12"/>
+        <rect data-sys="msk" x="146" y="90" width="24" height="130" rx="12"/>
+        <rect data-sys="msk" x="66" y="228" width="30" height="150" rx="14"/>
+        <rect data-sys="msk" x="104" y="228" width="30" height="150" rx="14"/>
+        <circle data-sys="rad" cx="170" cy="32" r="22"/>
+        <text class="lbl" x="100" y="49">Brain</text>
+        <text class="lbl" x="100" y="124">Heart</text>
+        <text class="lbl" x="100" y="192">Metabolic</text>
+        <text class="lbl" x="81" y="305">Legs</text>
+        <text class="lbl" x="119" y="305">Legs</text>
+        <text class="lbl" x="170" y="36">Rad</text>
+      </svg>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <span class="pill ok">Normal</span><span class="pill warn">Caution</span><span class="pill crit">Critical</span>
+      </div>
+    </div>
+    <div id="detail" class="card"></div>
+  </section>
+
+  <!-- 2. Logging and charts -->
+  <section id="tab-log" class="hidden space-y-4">
+    <form id="form" class="card">
+      <h2>Daily health log</h2>
+      <div id="fields" class="grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button class="btn">Save entry</button>
+        <button type="button" id="demo" class="btn2">Load 14-day demo</button>
+        <button type="button" id="exp" class="btn2">Export CSV for flight surgeon</button>
+        
+      </div>
+    </form>
+    <div class="card">
+      <div id="metrics" class="mb-3 flex flex-wrap gap-1"></div>
+      <canvas id="vc"></canvas>
+    </div>
+    <div class="card">
+      <h2>Sleep, mood and fatigue</h2>
+      <canvas id="wc"></canvas>
+    </div>
+  </section>
+
+  <!-- 3. Advisor -->
+  <section id="tab-adv" class="hidden">
+    <h2 class="mb-3 text-lg font-bold">Early warning and action advisor</h2>
+    <div id="alerts" class="space-y-3"></div>
+  </section>
+
+  <!-- Ground station -->
+  <section id="tab-ground" class="hidden space-y-4"></section>
+
+  <!-- 4. Education and gamification -->
+  <section id="tab-learn" class="hidden space-y-4">
+    <div id="rewards" class="card"></div>
+    <div class="grid gap-3 md:grid-cols-2">
+      <article class="card"><h3>Fluid shifts</h3><p>Without gravity pulling fluid toward your feet, roughly 1 to 2 L moves toward your head and chest. Expect a puffy face, stuffy nose and pressure behind the eyes. Over weeks, pressure changes can affect vision (SANS). Your heart also works less and loses some conditioning, so standing up after landing can cause fainting. Counter with fluids and salt as prescribed, daily aerobic exercise and lower-body negative pressure sessions.</p></article>
+      <article class="card"><h3>Bone density loss</h3><p>Weight-bearing bones in the hips, spine and legs can lose about 1 to 1.5% of density per month in orbit, much faster than osteoporosis on Earth. Bones need load to stay strong. Resistive exercise (squats, deadlifts, heel raises), enough calcium and vitamin D, and keeping to your exercise minutes are your best defense.</p></article>
+      <article class="card"><h3>Muscle and strength</h3><p>Calves, thighs and back muscles are not needed to hold you up, so they shrink quickly. Skipped workouts add up: three light days in a row is a trend worth correcting. Mix resistance and aerobic training and eat enough protein.</p></article>
+      <article class="card"><h3>Radiation</h3><p>Beyond Earth's atmosphere you are exposed to galactic cosmic rays and occasional solar particle events, at doses many times Earth's background. Long-term risks include cancer, cardiovascular disease and effects on the nervous system. Check your dosimeter, move to the shielded area when a solar storm alert is issued, and report unusual fatigue or nausea.</p></article>
+      <article class="card md:col-span-2"><h3>Sleep and behavioral health</h3><p>Orbiting Earth gives you about 16 sunrises a day, which disrupts your body clock. Isolation, confinement and workload make it harder. Keep a fixed sleep window, use dim warm light before bed, stay in touch with family and crew, and ask for a private psychological conference when mood stays low. Asking for help early is part of mission readiness.</p></article>
+    </div>
+    <p class="text-xs text-slate-500">VitalOrbit is a hackathon prototype for education and decision support. Thresholds are illustrative, not clinical, and it does not replace flight surgeon guidance.</p>
+  </section>
+</main>
+<footer class="mx-auto max-w-6xl p-4 pb-10"><div class="danger-zone"><div><b>Danger zone</b><p>Permanently deletes every health entry stored on this device.</p></div><button type="button" id="clr" class="btn-danger">⚠ Clear all data</button></div></footer>
+<div id="toast" class="fixed bottom-4 left-1/2 hidden -translate-x-1/2 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>

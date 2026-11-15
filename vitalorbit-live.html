@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VitalOrbit: Astronaut Health Monitor</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>/* VitalOrbit theme: deep-space navy, cobalt/cyan brand accent, functional status colors */
+:root{--bg:#060a18;--panel:#0d1430;--line:#1f2b55;--muted:#8b9bc4;--brand:#3b82f6;--brand2:#22d3ee;
+  --ok:#10b981;--warn:#f59e0b;--crit:#ef4444;--none:#44507a}
+::selection{background:#3b82f666}
+body{font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;background-attachment:fixed;
+  background:radial-gradient(1px 1px at 12% 18%,#fff9,transparent),radial-gradient(1px 1px at 78% 12%,#fff8,transparent),
+  radial-gradient(1.5px 1.5px at 40% 72%,#fff6,transparent),radial-gradient(1px 1px at 91% 58%,#fff7,transparent),
+  radial-gradient(1px 1px at 24% 92%,#fff6,transparent),radial-gradient(900px 520px at 85% -8%,#1d4ed855,transparent),
+  radial-gradient(700px 480px at -5% 35%,#7c3aed30,transparent),var(--bg)}
+h1,h2,h3,.ring b,.stat b{font-family:Sora,"IBM Plex Sans",system-ui,sans-serif;letter-spacing:-.01em}
+header.sticky{background:linear-gradient(#0a1230f2,#070c20f2);border-color:var(--line)}
+.card{position:relative;background:linear-gradient(180deg,#111a3a,#0c1430);border:1px solid var(--line);border-radius:1.1rem;
+  padding:1.4rem;box-shadow:0 1px 0 #ffffff0d inset,0 18px 40px -26px #000}
+.card h2,.card h3{font-weight:600;margin-bottom:.6rem;color:#dbe6ff}
+.card p{color:#c3cff0;font-size:.93rem;line-height:1.65;max-width:70ch}
+article.card::before{content:"";position:absolute;left:1.4rem;top:0;width:2.6rem;height:3px;border-radius:0 0 3px 3px;
+  background:linear-gradient(90deg,var(--brand),var(--brand2))}
+#hero{background:linear-gradient(135deg,#16265a,#0c1430 62%);border-color:#2f4496;box-shadow:0 0 0 1px #3b82f622,0 24px 60px -30px #2563eb}
+.tab{padding:.45rem 1rem;border-radius:999px;font-size:.9rem;color:var(--muted);white-space:nowrap;transition:background .2s,color .2s}
+.tab:hover{color:#e8eefc;background:#16214a}
+.tab.on{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-weight:600;box-shadow:0 6px 18px -8px #3b82f6}
+.btn,.btn2,.btn-danger{padding:.55rem 1.1rem;border-radius:.7rem;font-size:.9rem;transition:filter .2s,border-color .2s,background .2s}
+.btn{background:linear-gradient(135deg,#3b82f6,#22d3ee);color:#04122e;font-weight:700}.btn:hover{filter:brightness(1.1)}
+.btn2{border:1px solid var(--line);background:#101a3b;color:#cbd8f7}.btn2:hover{border-color:var(--brand);background:#16214a}
+.btn-danger{background:#dc2626;color:#fff;font-weight:700;border:1px solid #fca5a5}.btn-danger:hover{background:#b91c1c}
+label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.25rem}
+input{width:100%;background:#080f26;border:1px solid var(--line);border-radius:.55rem;padding:.5rem .65rem;color:#f1f5f9}
+input:hover{border-color:#34478a}
+button:focus-visible,input:focus-visible,.zone:focus-visible{outline:2px solid var(--brand2);outline-offset:2px}
+.pill{display:inline-block;padding:.15rem .75rem;border-radius:999px;font-size:.8rem;font-weight:600;border:1px solid transparent}
+.pill.ok{background:#064e3b88;color:#6ee7b7;border-color:#10b98155}.pill.warn{background:#78350f88;color:#fcd34d;border-color:#f59e0b55}
+.pill.crit{background:#7f1d1d99;color:#fca5a5;border-color:#ef444466}.pill.none{background:#16214a;color:var(--muted);border-color:var(--line)}
+.halo{fill:#1d4ed812;stroke:#3b82f64d;stroke-dasharray:3 7}
+.zone{stroke:var(--panel);stroke-width:3;cursor:pointer;opacity:.9;transition:filter .2s,opacity .2s}
+.zone:hover,.zone.sel{opacity:1;filter:brightness(1.15) drop-shadow(0 0 9px currentColor)}
+.zone.sel{stroke:#f8fafc}
+.zone.ok{fill:var(--ok);color:var(--ok)}.zone.warn{fill:var(--warn);color:var(--warn)}
+.zone.crit{fill:var(--crit);color:var(--crit);animation:pulse 1.4s infinite}.zone.none{fill:var(--none);color:var(--none)}
+.lbl{font:700 10px "IBM Plex Sans",system-ui,sans-serif;fill:#04122e;text-anchor:middle;pointer-events:none}
+.metric{padding:.25rem .8rem;border-radius:999px;border:1px solid var(--line);font-size:.8rem;color:#cbd8f7;background:#0f1938}
+.metric:hover{border-color:var(--brand)}.metric.on{background:linear-gradient(135deg,#3b82f6,#22d3ee);color:#04122e;border-color:transparent;font-weight:600}
+.badge{background:#0f1938;border:1px solid var(--line);border-radius:.9rem;padding:.8rem;text-align:center}
+.badge:not(.off){border-color:#3b82f6aa;box-shadow:0 0 20px -9px #3b82f6}
+.badge.off{opacity:.4;filter:grayscale(1)}
+.bar{height:.6rem;background:#16214a;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2))}
+.ring{--c:var(--ok);width:7.5rem;height:7.5rem;border-radius:50%;display:grid;place-content:center;text-align:center;
+  background:radial-gradient(closest-side,#0e173a 78%,transparent 80%),conic-gradient(var(--c) var(--p),#1f2b55 0);box-shadow:0 0 36px -12px var(--c)}
+.ring.warn{--c:var(--warn)}.ring.crit{--c:var(--crit)}
+.ring b{font-size:2.1rem;line-height:1}.ring span{font-size:.72rem;color:var(--muted)}
+.stat{background:#0b1330;border:1px solid var(--line);border-radius:.8rem;padding:.55rem 1rem;color:var(--muted);font-size:.75rem}
+.stat b{display:block;font-size:1.5rem;color:#f1f5f9}
+@keyframes pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.zone.crit{animation:none}*{transition:none!important}}
+
+select{background:#020617;border:1px solid #334155;border-radius:.5rem;padding:.4rem .6rem;color:#f1f5f9}
+td,th{padding:.35rem .5rem;text-align:center;border-bottom:1px solid #1e293b}
+th{color:#94a3b8;font-weight:600}
+.cell{background:#713f12;color:#fde047;font-weight:600}
+
+body{background-color:#020617;background-image:radial-gradient(1px 1px at 20px 30px,#fff6,transparent),radial-gradient(1px 1px at 120px 90px,#fff5,transparent),radial-gradient(1.5px 1.5px at 200px 160px,#fff4,transparent),radial-gradient(900px 500px at 85% -10%,#0b2a5240,transparent);background-size:240px 200px,240px 200px,240px 200px,auto}
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;border:1px solid;border-radius:.8rem;padding:.7rem 1rem;font-size:.92rem}
+.banner.ok{background:#052e16;border-color:#16a34a;color:#bbf7d0}
+.banner.warn{background:#2a1f05;border-color:#ca8a04;color:#fde68a}
+.banner.crit{background:#2a0b0f;border-color:#ef4444;color:#fecaca;box-shadow:0 0 18px #ef444455;animation:glow 2s infinite}
+.banner.none{background:#0f172a;border-color:#334155;color:#cbd5e1}
+@keyframes glow{50%{box-shadow:0 0 6px #ef444433}}
+.card.al{border-left-width:5px}
+.card.al.ok{background:#052e16;border-color:#16a34a}
+.card.al.warn{background:#2a1f05;border-color:#ca8a04}
+.card.al.crit{background:#2a0b0f;border-color:#ef4444}
+.tile{border:1px solid #1e293b;border-radius:.5rem;padding:.75rem;background:#0f172a}
+.tile.ok{border-color:#16a34a;background:#052e16}.tile.warn{border-color:#ca8a04;background:#2a1f05}.tile.crit{border-color:#dc2626;background:#2a0b0f}
+.dot{display:inline-grid;place-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-size:.8rem;font-weight:700}
+.dot.ok{background:#16a34a;color:#fff}.dot.warn{background:#ca8a04;color:#fff;animation:pulse 1.4s infinite}.dot.crit{background:#7f1d1d;color:#fca5a5}
+.danger-zone{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;border:1px solid #dc2626;background:#2a0b0f;border-radius:1rem;padding:1rem 1.25rem;color:#fca5a5}
+.danger-zone p{font-size:.85rem;color:#fca5a5}
+@media (prefers-reduced-motion:reduce){.banner.crit,.dot.warn{animation:none}}
+
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}header.sticky{top:env(safe-area-inset-top,0px)}body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#0a1230;z-index:10}</style>
+</head>
+<body class="text-slate-100">
+<header class="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+    <h1 class="flex items-center gap-2 text-xl font-bold"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><circle cx="16" cy="16" r="6" fill="url(#lg)"/><ellipse cx="16" cy="16" rx="14" ry="5.5" fill="none" stroke="url(#lg)" stroke-width="1.8" transform="rotate(-25 16 16)"/><circle cx="27" cy="9.5" r="2.2" fill="#e8eefc"/></svg>VitalOrbit</h1>
+    <span class="hidden text-xs text-slate-400 lg:inline">Self-care and early warning for deep-space crews</span>
+    <span id="overall" class="pill none">No data</span>
+    <div class="ml-auto flex items-center gap-4 text-sm text-slate-300">
+      <span id="hStreak"></span><span id="hXp"></span>
+    </div>
+  </div>
+  <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2" aria-label="Sections">
+    <button class="tab on" data-tab="dash">Body status</button>
+    <button class="tab" data-tab="log">Log and trends</button>
+    <button class="tab" data-tab="adv">Early warning</button>
+    <button class="tab" data-tab="ground">Ground station</button>
+    <button class="tab" data-tab="learn">Learn and rewards</button>
+  </nav>
+</header>
+
+<div id="banner" class="mx-auto max-w-6xl px-4 pt-3" aria-live="polite"></div>
+<main class="mx-auto max-w-6xl p-4">
+  <!-- 1. Body map -->
+  <section id="tab-dash" class="grid gap-4 md:grid-cols-2">
+    <div id="hero" class="card md:col-span-2"></div>
+    <div class="card flex flex-col items-center">
+      <h2 class="self-start">Select a body system</h2>
+      <svg id="body" viewBox="0 0 200 400" class="h-[430px]" role="group" aria-label="Interactive body map">
+        <circle class="halo" cx="100" cy="205" r="192"/>
+        <circle data-sys="neuro" cx="100" cy="45" r="31"/>
+        <rect data-sys="cardio" x="62" y="85" width="76" height="70" rx="26"/>
+        <rect data-sys="meta" x="66" y="158" width="68" height="62" rx="22"/>
+        <rect data-sys="msk" x="30" y="90" width="24" height="130" rx="12"/>
+        <rect data-sys="msk" x="146" y="90" width="24" height="130" rx="12"/>
+        <rect data-sys="msk" x="66" y="228" width="30" height="150" rx="14"/>
+        <rect data-sys="msk" x="104" y="228" width="30" height="150" rx="14"/>
+        <circle data-sys="rad" cx="170" cy="32" r="22"/>
+        <text class="lbl" x="100" y="49">Brain</text>
+        <text class="lbl" x="100" y="124">Heart</text>
+        <text class="lbl" x="100" y="192">Metabolic</text>
+        <text class="lbl" x="81" y="305">Legs</text>
+        <text class="lbl" x="119" y="305">Legs</text>
+        <text class="lbl" x="170" y="36">Rad</text>
+      </svg>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <span class="pill ok">Normal</span><span class="pill warn">Caution</span><span class="pill crit">Critical</span>
+      </div>
+    </div>
+    <div id="detail" class="card"></div>
+  </section>
+
+  <!-- 2. Logging and charts -->
+  <section id="tab-log" class="hidden space-y-4">
+    <form id="form" class="card">
+      <h2>Daily health log</h2>
+      <div id="fields" class="grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button class="btn">Save entry</button>
+        <button type="button" id="demo" class="btn2">Load 14-day demo</button>
+        <button type="button" id="exp" class="btn2">Export CSV for flight surgeon</button>
+        
+      </div>
+    </form>
+    <div class="card">
+      <div id="metrics" class="mb-3 flex flex-wrap gap-1"></div>
+      <canvas id="vc"></canvas>
+    </div>
+    <div class="card">
+      <h2>Sleep, mood and fatigue</h2>
+      <canvas id="wc"></canvas>
+    </div>
+  </section>
+
+  <!-- 3. Advisor -->
+  <section id="tab-adv" class="hidden">
+    <h2 class="mb-3 text-lg font-bold">Early warning and action advisor</h2>
+    <div id="alerts" class="space-y-3"></div>
+  </section>
+
+  <!-- Ground station -->
+  <section id="tab-ground" class="hidden space-y-4"></section>
+
+  <!-- 4. Education and gamification -->
+  <section id="tab-learn" class="hidden space-y-4">
+    <div id="rewards" class="card"></div>
+    <div class="grid gap-3 md:grid-cols-2">
+      <article class="card"><h3>Fluid shifts</h3><p>Without gravity pulling fluid toward your feet, roughly 1 to 2 L moves toward your head and chest. Expect a puffy face, stuffy nose and pressure behind the eyes. Over weeks, pressure changes can affect vision (SANS). Your heart also works less and loses some conditioning, so standing up after landing can cause fainting. Counter with fluids and salt as prescribed, daily aerobic exercise and lower-body negative pressure sessions.</p></article>
+      <article class="card"><h3>Bone density loss</h3><p>Weight-bearing bones in the hips, spine and legs can lose about 1 to 1.5% of density per month in orbit, much faster than osteoporosis on Earth. Bones need load to stay strong. Resistive exercise (squats, deadlifts, heel raises), enough calcium and vitamin D, and keeping to your exercise minutes are your best defense.</p></article>
+      <article class="card"><h3>Muscle and strength</h3><p>Calves, thighs and back muscles are not needed to hold you up, so they shrink quickly. Skipped workouts add up: three light days in a row is a trend worth correcting. Mix resistance and aerobic training and eat enough protein.</p></article>
+      <article class="card"><h3>Radiation</h3><p>Beyond Earth’s atmosphere you are exposed to galactic cosmic rays and occasional solar particle events, at doses many times Earth’s background. Long-term risks include cancer, cardiovascular disease and effects on the nervous system. Check your dosimeter, move to the shielded area when a solar storm alert is issued, and report unusual fatigue or nausea.</p></article>
+      <article class="card md:col-span-2"><h3>Sleep and behavioral health</h3><p>Orbiting Earth gives you about 16 sunrises a day, which disrupts your body clock. Isolation, confinement and workload make it harder. Keep a fixed sleep window, use dim warm light before bed, stay in touch with family and crew, and ask for a private psychological conference when mood stays low. Asking for help early is part of mission readiness.</p></article>
+    </div>
+    <p class="text-xs text-slate-500">VitalOrbit is a hackathon prototype for education and decision support. Thresholds are illustrative, not clinical, and it does not replace flight surgeon guidance.</p>
+  </section>
+</main>
+<footer class="mx-auto max-w-6xl p-4 pb-10"><div class="danger-zone"><div><b>Danger zone</b><p>Permanently deletes every health entry stored on this device.</p></div><button type="button" id="clr" class="btn-danger">⚠ Clear all data</button></div></footer>
+<div id="toast" class="fixed bottom-4 left-1/2 hidden -translate-x-1/2 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950" role="status"></div>
+<script>'use strict';
+/* VitalOrbit: astronaut health monitor. Vanilla JS + Chart.js. Data stays in localStorage. */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const KEY = 'vitalorbit.v1', LV = ['ok', 'warn', 'crit'], LN = ['Normal', 'Caution', 'Critical'];
+const iso = (d = new Date()) => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+const save = h => { try { localStorage.setItem(KEY, JSON.stringify(h.sort((a, b) => (a.date < b.date ? -1 : 1)))); } catch {} };
+const avg = (a, k) => a.reduce((t, x) => t + x[k], 0) / a.length;
+const hi = (v, w, c) => (v >= c ? 2 : v >= w ? 1 : 0), lo = (v, w, c) => (v <= c ? 2 : v <= w ? 1 : 0);
+
+/* Metrics: key, label, unit, input limits, normal band (used for charts and display) */
+const F = [
+  { k: 'hr', l: 'Resting heart rate', u: 'bpm', min: 30, max: 200, step: 1, b: [50, 100] },
+  { k: 'sys', l: 'Systolic BP', u: 'mmHg', min: 70, max: 220, step: 1, b: [100, 130] },
+  { k: 'dia', l: 'Diastolic BP', u: 'mmHg', min: 40, max: 140, step: 1, b: [60, 85] },
+  { k: 'glu', l: 'Blood glucose', u: 'mg/dL', min: 40, max: 400, step: 1, b: [80, 140] },
+  { k: 'temp', l: 'Body temperature', u: '°C', min: 34, max: 41, step: 0.1, b: [36.1, 37.5] },
+  { k: 'sleep', l: 'Sleep', u: 'h', min: 0, max: 14, step: 0.5, b: [7, 9] },
+  { k: 'mood', l: 'Mood (1 low to 5 high)', u: '/5', min: 1, max: 5, step: 1, b: [3, 5] },
+  { k: 'fat', l: 'Fatigue (1 low to 10 high)', u: '/10', min: 1, max: 10, step: 1, b: [1, 5] },
+  { k: 'ex', l: 'Exercise countermeasures', u: 'min', min: 0, max: 300, step: 1, b: [90, 180] },
+  { k: 'h2o', l: 'Water intake', u: 'L', min: 0, max: 6, step: 0.1, b: [2, 3.5] },
+  { k: 'rad', l: 'Radiation dose (dosimeter)', u: 'mSv', min: 0, max: 20, step: 0.01, b: [0.3, 0.8] },
+];
+const SYS = {
+  cardio: { n: 'Cardiovascular', m: ['hr', 'sys', 'dia'], tip: 'Alternate treadmill intervals with resistive work, do lower-body negative pressure sessions per protocol, and take 0.5 to 1 L of fluid with salt as prescribed.' },
+  msk: { n: 'Musculoskeletal', m: ['ex'], tip: 'Complete a resistive session (squats, deadlifts, heel raises) plus 30 min aerobic work. Confirm calcium and vitamin D intake with your flight surgeon.' },
+  neuro: { n: 'Neurological and sleep', m: ['sleep', 'mood', 'fat'], tip: 'Keep a fixed 8 h sleep window, dim blue light for an hour before bed, do 10 min of paced breathing, and call a crewmate or family.' },
+  meta: { n: 'Metabolic', m: ['glu', 'temp', 'h2o'], tip: 'Eat a balanced meal with protein, drink 250 mL of water every hour, and recheck glucose and temperature in 30 min.' },
+};
+SYS.rad = { n: 'Radiation exposure', m: ['rad'], tip: 'Check your dosimeter daily, watch for solar activity alerts, and rest in the best-shielded area during storms. Review cumulative dose with your flight surgeon.' };
+/* Rule table: [system, metric, level function, alert title, recommended action] */
+const RULES = [
+  ['cardio', 'hr', e => Math.max(hi(e.hr, 101, 120), lo(e.hr, 54, 44)), 'Resting heart rate out of range', 'Sit and rest 15 min, drink 500 mL water, then re-measure. Skip max-effort exercise until it normalizes.'],
+  ['cardio', 'sys', e => Math.max(hi(e.sys, 130, 160), hi(e.dia, 85, 100), lo(e.sys, 100, 89)), 'Blood pressure out of range', 'Re-measure after 5 min of rest. If high, cut sodium and do light aerobic work. If low, fluid-load 0.5 to 1 L and stand up slowly.'],
+  ['meta', 'glu', e => Math.max(hi(e.glu, 141, 181), lo(e.glu, 79, 69)), 'Blood glucose out of range', 'If low, take 15 g fast carbohydrate and recheck in 15 min. If high, drink water, take a light walk or treadmill session, and recheck.'],
+  ['meta', 'temp', e => Math.max(hi(e.temp, 37.6, 38), lo(e.temp, 36, 35)), 'Body temperature out of range', 'Hydrate, check cabin temperature and clothing, and re-measure in 30 min. Report any fever with other symptoms.'],
+  ['meta', 'h2o', e => lo(e.h2o, 1.9, 1.2), 'Low hydration', 'Drink 500 mL now, then 250 mL every hour until you reach 2.5 L. Low fluid worsens fluid-shift symptoms.'],
+  ['neuro', 'sleep', e => lo(e.sleep, 6.4, 4.9), 'Short sleep', 'Protect an 8 h window tonight: dim lights, no screens for an hour, cool cabin, earplugs and eye mask. Defer non-critical tasks.'],
+  ['neuro', 'mood', e => lo(e.mood, 2, 1), 'Low mood', 'Schedule a private family or psychological conference and join a crew meal. Reaching out early is a mission skill.'],
+  ['neuro', 'fat', e => hi(e.fat, 7, 9), 'High fatigue', 'Take a 20 min rest break, eat and drink, and reduce workload. Persistent fatigue can signal sleep debt or overtraining.'],
+  ['msk', 'ex', e => lo(e.ex, 59, 19), 'Exercise below target', 'Add a resistive session today (squats, deadlifts, heel raises). Skipped load speeds up bone and muscle loss.'],
+  ['rad', 'rad', e => hi(e.rad, 0.8, 2), 'Elevated radiation dose', 'Move to the shielded area or storm shelter, check solar-activity alerts, postpone EVA, and tell the ground team. Log any nausea or unusual fatigue.'],
+];
+
+/* Pattern detection across the last few days */
+function trends(h) {
+  const T = [], l = h.slice(-3), m = h.slice(-5);
+  const P = (s, lv, t, v, act) => T.push({ s, lv, t, v, act, trend: 1 });
+  const up = k => (l.length === 3 && l[0][k] < l[1][k] && l[1][k] < l[2][k] ? l[2][k] - l[0][k] : 0);
+  if (l.length === 3 && avg(l, 'sleep') < 6.5) P('neuro', 1, 'Sleep debt building', `3-day average ${avg(l, 'sleep').toFixed(1)} h`, 'Move bedtime earlier, avoid caffeine late in the shift, and ask the flight surgeon about a sleep-aid plan.');
+  if (up('hr') >= 8) P('cardio', 1, 'Resting heart rate rising 3 days', `+${up('hr')} bpm`, 'Check hydration and exercise load. A steady rise can mean dehydration, deconditioning or early infection. Report if it continues.');
+  if (up('sys') >= 10) P('cardio', 1, 'Systolic pressure rising 3 days', `+${up('sys')} mmHg`, 'Review sodium intake and stress, and add aerobic work. Share the trend with the ground team.');
+  if (l.length === 3 && l.every(x => x.mood <= 2)) P('neuro', 2, 'Behavioral health: low mood for 3 days', 'Mood 2/5 or lower', 'Request a private psychological conference with ground support today.');
+  if (m.length === 5 && avg(m, 'ex') < 60) P('msk', 1, 'Bone and muscle risk: low exercise', `5-day average ${Math.round(avg(m, 'ex'))} min`, 'Re-commit to daily resistive and aerobic sessions. Target 90 min or more per day.');
+  return T;
+}
+function evaluate(h) {
+  const e = h[h.length - 1], A = [], S = { cardio: 0, msk: 0, neuro: 0, meta: 0, rad: 0 };
+  if (!e) return { e, A, S };
+  RULES.forEach(([s, k, fn, t, act]) => {
+    const lv = fn(e);
+    if (lv) A.push({ s, lv, t, v: k === 'sys' ? `${e.sys}/${e.dia} mmHg` : `${e[k]} ${F.find(f => f.k === k).u}`, act });
+  });
+  trends(h).forEach(a => A.push(a));
+  A.forEach(a => (S[a.s] = Math.max(S[a.s], a.lv)));
+  return { e, A: A.sort((a, b) => b.lv - a.lv), S };
+}
+
+/* Gamification */
+function streak(h) {
+  const d = new Set(h.map(e => e.date)), c = new Date();
+  if (!d.has(iso(c))) c.setDate(c.getDate() - 1);
+  let n = 0;
+  while (d.has(iso(c))) { n++; c.setDate(c.getDate() - 1); }
+  return n;
+}
+const BADGES = [
+  ['🚀', 'First log', 'Save your first entry', h => h.length >= 1],
+  ['🔥', '3-day streak', 'Log 3 days in a row', (h, s) => s >= 3],
+  ['🌟', '7-day streak', 'Log 7 days in a row', (h, s) => s >= 7],
+  ['🏆', '14-day streak', 'Log 14 days in a row', (h, s) => s >= 14],
+  ['😴', 'Sleep master', '5 nights of 7 h or more', h => h.filter(e => e.sleep >= 7).length >= 5],
+  ['🦴', 'Iron bones', '5 days of 90 min or more exercise', h => h.filter(e => e.ex >= 90).length >= 5],
+  ['💧', 'Hydration hero', '5 days of 2 L or more water', h => h.filter(e => e.h2o >= 2).length >= 5],
+  ['🟢', 'All green', 'Latest log: every system normal', (h, s, R) => !!R.e && Object.values(R.S).every(v => !v)],
+];
+
+/* Rendering */
+let sel = 'cardio', tab = 'dash', metric = 'hr', link = 'leo', vc, wc, R;
+const BD = ['', 'border-yellow-500', 'border-red-500'];
+
+function render() {
+  const h = load(); R = evaluate(h);
+  const top = R.e ? Math.max(...Object.values(R.S)) : -1;
+  $('#overall').className = 'pill ' + (R.e ? LV[top] : 'none');
+  $('#overall').textContent = R.e ? 'Overall: ' + LN[top] : 'No data yet';
+  $$('#body [data-sys]').forEach(el => el.setAttribute('class', 'zone ' + (R.e ? LV[R.S[el.dataset.sys]] : 'none') + (el.dataset.sys === sel ? ' sel' : '')));
+  renderBanner(h); renderHero(h); renderGround(h); renderDetail(); renderAlerts(); renderRewards(h);
+  if (tab === 'log') charts(h);
+}
+const TIPS = [
+  'Drink a full glass of water with each meal. Thirst can be a weak signal in microgravity.',
+  'Finish every resistive session. Even a short one loads your bones.',
+  'Keep a fixed sleep window. Your body clock sees 16 sunrises a day.',
+  'Talk to someone outside your work today. Connection protects mood.',
+  'Check your dosimeter and solar alerts before planning EVA or long tasks.',
+  'Stretch your back and hips. The spine lengthens in microgravity and can ache.',
+  'Eat enough. Appetite can drop in orbit, and under-eating speeds bone and muscle loss.',
+];
+const mlv = k => { const r = RULES.find(x => x[1] === (k === 'dia' ? 'sys' : k)); return r && R.e ? r[2](R.e) : 0; };
+function renderBanner(h) {
+  const today = h.some(e => e.date === iso()), top = R.A[0], s = streak(h), miss = R.e && !today;
+  const c = !R.e ? 'none' : top ? LV[top.lv] : 'ok';
+  const msg = !R.e ? '👋 Welcome aboard. Load the demo or save your first check-in to start monitoring.'
+    : top && top.lv > 1 ? `🚨 Critical: ${top.t} (${top.v}). ${top.act}`
+    : top ? `⚠️ Caution: ${R.A.length} item${R.A.length > 1 ? 's' : ''} to watch. Top: ${top.t} (${top.v}).`
+    : '✅ All systems nominal. Great work, crew.';
+  const btn = (go, t) => `<button class="btn2 !py-1" data-go="${go}">${t}</button>`;
+  $('#banner').innerHTML = `<div class="banner ${c}"><span>${msg}${miss ? ` <b>Today’s check-in is missing${s ? `: log now to protect your ${s}-day streak` : ''}.</b>` : ''}</span>
+    <span class="flex gap-2">${top ? btn('adv', 'View advice') : ''}${miss ? btn('log', 'Log now') : ''}</span></div>`;
+  $$('#banner [data-go]').forEach(b => (b.onclick = () => show(b.dataset.go)));
+  $('[data-tab=adv]').innerHTML = 'Early warning' + (R.A.length ? ` <span class="pill ${R.A[0].lv > 1 ? 'crit' : 'warn'} !px-2 !py-0">${R.A.length}</span>` : R.e ? ' <span class="pill ok !px-2 !py-0">✓</span>' : '');
+}
+function renderHero(h) {
+  let html;
+  if (!R.e) {
+    html = `<div class="flex flex-wrap items-center gap-6">
+      <div class="min-w-[16rem] flex-1"><h2 class="!text-2xl">Catch health changes before they become problems</h2>
+      <p>Log vitals in under a minute, watch trends build over weeks in orbit, and get clear next steps when something drifts, even when the ground is minutes away.</p></div>
+      <div class="flex flex-col gap-2"><button class="btn !px-6 !py-3 !text-base" data-go="demo">Start with a 14-day demo mission</button>
+      <button class="btn2" data-go="log">Log today’s check-in</button></div></div>`;
+  } else {
+    const sc = Math.max(0, 100 - R.A.reduce((t, a) => t + (a.lv > 1 ? 22 : 8), 0)), tone = sc >= 85 ? 'ok' : sc >= 60 ? 'warn' : 'crit', top = R.A[0];
+    const tc = { ok: 'text-green-400', warn: 'text-yellow-300', crit: 'text-red-400' }[tone], today = h.some(e => e.date === iso());
+    const good = F.filter(f => R.e[f.k] != null && mlv(f.k) === 0).length;
+    const strip = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); const k = iso(d), on = h.some(e => e.date === k); return `<span class="dot ${on ? 'ok' : i === 6 ? 'warn' : 'crit'}" title="${k}">${on ? '✓' : i === 6 ? '!' : '✕'}</span>`; }).join('');
+    html = `<div class="flex flex-wrap items-center gap-6">
+      <div class="ring ${tone}" style="--p:${sc * 3.6}deg" role="img" aria-label="Readiness score ${sc} out of 100"><b>${sc}</b><span>readiness</span></div>
+      <div class="min-w-[16rem] flex-1"><h2 class="!text-xl ${tc}">${sc >= 85 ? 'Mission ready: all systems stable' : sc >= 60 ? 'Monitor closely: some readings need attention' : 'Action needed: follow the advisor now'}</h2>
+      <p>${top ? `<b>Next best action (${SYS[top.s].n}):</b> ${top.act}` : 'Nothing needs fixing today. Keep your routine and log again tomorrow.'}</p>
+      <p class="mt-2 !text-xs !text-sky-300">💡 Mission tip: ${TIPS[new Date().getDate() % TIPS.length]}</p>
+      <div class="mt-3 flex flex-wrap items-center gap-1"><span class="mr-1 text-xs text-slate-400">Last 7 check-ins</span>${strip}</div></div>
+      <div class="flex gap-2 text-center"><div class="stat"><b class="text-green-400">${good}/${F.length}</b>in range</div>
+      <div class="stat"><b class="${R.A.length ? 'text-red-400' : 'text-green-400'}">${R.A.length}</b>active alerts</div>
+      <div class="stat"><b class="text-orange-400">${streak(h)}</b>day streak</div></div></div>
+      <div class="mt-4 flex flex-wrap gap-2">${today ? '' : `<button class="btn" data-go="log">Log today’s check-in</button>`}<button class="btn2" data-go="demo">Reload demo</button><button class="btn-danger" data-go="clear">⚠ Clear data</button></div>`;
+  }
+  $('#hero').innerHTML = html;
+  $$('#hero [data-go]').forEach(b => (b.onclick = () => ({ demo: seed, clear: () => $('#clr').click() }[b.dataset.go] || (() => show('log')))()));
+}
+const LINKS = { leo: ['Low Earth orbit (ISS)', 0.05], moon: ['Moon', 1.3], mars: ['Mars (average distance)', 780] };
+const fmt = s => (s < 1 ? s.toFixed(2) + ' s' : s < 60 ? s.toFixed(1) + ' s' : Math.round(s / 60) + ' min');
+function renderGround(h) {
+  const d = LINKS[link][1], el = $('#tab-ground');
+  const out = (k, v) => { const b = F.find(f => f.k === k).b; return v != null && (v < b[0] || v > b[1]); };
+  el.innerHTML = `<div class="card"><div class="flex flex-wrap items-center gap-3"><h2 class="!mb-0">Ground station: flight surgeon view</h2>
+    <label class="ml-auto !mb-0 flex items-center gap-2">Crew location <select id="link">${Object.entries(LINKS).map(([k, [n]]) => `<option value="${k}" ${k === link ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+    <p class="mt-2">Round-trip signal delay: <b>${fmt(d * 2)}</b>. ${d > 60 ? 'The ground cannot answer in real time here, so the on-board advisor has to guide the first steps.' : 'The ground can respond quickly, and these early warnings help prioritize calls.'}</p></div>` +
+    (!R.e ? '<div class="card"><p>No telemetry yet. Save a log or load the demo to see the downlink packet.</p></div>' : `
+    <div class="card"><h3>Downlink packet (simulated)</h3>
+    <div class="mb-3 flex flex-wrap gap-2">${Object.keys(SYS).map(k => `<span class="pill ${LV[R.S[k]]}">${SYS[k].n}: ${LN[R.S[k]]}</span>`).join('')}</div>
+    ${R.A.length ? R.A.slice(0, 4).map(a => `<p class="mb-1"><b class="${a.lv > 1 ? 'text-red-300' : 'text-yellow-300'}">${a.t}</b> (${a.v})</p>`).join('') : '<p>No active alerts.</p>'}
+    <div class="mt-3 flex flex-wrap items-center gap-3"><button id="tx" class="btn">Transmit health packet</button><span id="txs" class="text-sm text-slate-300"></span></div></div>
+    <div class="card overflow-x-auto"><h3>Last 7 days (highlighted = outside normal range)</h3><table class="w-full text-sm"><tr><th class="!text-left">Date</th>${F.map(f => `<th title="${f.l} (${f.u})">${f.k}</th>`).join('')}</tr>
+    ${h.slice(-7).map(e => `<tr><td class="!text-left">${e.date.slice(5)}</td>${F.map(f => `<td class="${out(f.k, e[f.k]) ? 'cell' : ''}">${e[f.k] ?? '–'}</td>`).join('')}</tr>`).join('')}</table></div>`);
+  $('#link').onchange = ev => { link = ev.target.value; renderGround(h); };
+  const tx = $('#tx');
+  if (tx) tx.onclick = () => {
+    $('#txs').textContent = `Transmitting. One-way delay ${fmt(d)} (the demo replays this in 2 s).`;
+    setTimeout(() => {
+      const t = R.A[0];
+      $('#txs').innerHTML = `✅ Received by ground at ${new Date().toLocaleTimeString()}. <b>Flight surgeon note (simulated):</b> ${t ? `Reviewed “${t.t}”. Follow the on-board advice, re-check within 24 h, and call if it persists.` : 'No concerns. Continue the routine and keep logging.'}`;
+      toast('Health packet acknowledged by ground');
+    }, 2000);
+  };
+}
+function renderDetail() {
+  const c = SYS[sel], lv = R.S[sel], al = R.A.filter(a => a.s === sel);
+  $('#detail').innerHTML = `
+    <div class="flex items-center justify-between"><h2>${c.n}</h2><span class="pill ${R.e ? LV[lv] : 'none'}">${R.e ? LN[lv] : 'No data'}</span></div>
+    <div class="mb-4 grid grid-cols-3 gap-2">${c.m.map(k => { const f = F.find(x => x.k === k); return `
+      <div class="tile ${R.e ? LV[mlv(k)] : 'none'}"><div class="text-xs text-slate-400">${f.l} ${R.e ? ['✓', '⚠️', '🚨'][mlv(k)] : ''}</div>
+      <div class="text-lg font-semibold">${R.e ? R.e[k] : '–'} <span class="text-xs text-slate-500">${f.u}</span></div>
+      <div class="text-xs text-slate-500">normal ${f.b[0]} to ${f.b[1]}</div></div>`; }).join('')}</div>
+    ${!R.e ? '<p>Save a daily log (or load the demo data) to color the body map.</p>' : al.length
+      ? al.map(a => `<p class="mb-2"><b class="${a.lv > 1 ? 'text-red-300' : 'text-yellow-300'}">${a.t}</b> (${a.v}). ${a.act}</p>`).join('')
+      : '<p class="mb-2">Everything in this system is within range today.</p>'}
+    ${sel === 'rad' && R.e ? `<p class="mb-2">Cumulative logged dose: <b>${load().reduce((t, e) => t + (e.rad || 0), 0).toFixed(1)} mSv</b>. A solar particle event can spike the daily dose.</p>` : ''}
+    <h3 class="mt-4">Standing countermeasures</h3><p>${c.tip}</p>`;
+}
+function renderAlerts() {
+  const good = R.e ? F.filter(f => R.e[f.k] != null && mlv(f.k) === 0) : [];
+  $('#alerts').innerHTML = !R.e ? '<div class="card"><p>Save your first daily log to activate the advisor.</p></div>'
+    : (R.A.length ? R.A.map(a => `<div class="card al ${LV[a.lv]}">
+        <div class="flex flex-wrap items-center gap-2"><span class="pill ${LV[a.lv]}">${a.lv > 1 ? '🚨' : '⚠️'} ${LN[a.lv]}</span><b>${SYS[a.s].n}: ${a.t}</b><span class="text-sm opacity-80">${a.v}</span></div>
+        <p class="mt-2">💡 ${a.act}</p>
+        ${a.lv > 1 ? '<p class="mt-2 !text-xs !text-red-300">📡 Auto-queued for flight surgeon downlink (simulated)</p>' : ''}</div>`).join('')
+      : '<div class="card al ok"><p>✅ All systems nominal. Keep up your exercise, hydration and sleep routine.</p></div>')
+    + (good.length ? `<div class="card al ok"><h3 class="text-green-400">✓ Going well (${good.length})</h3><div class="flex flex-wrap gap-2">${good.map(f => `<span class="pill ok">✓ ${f.l}: ${R.e[f.k]} ${f.u}</span>`).join('')}</div></div>` : '');
+}
+function renderRewards(h) {
+  const s = streak(h), got = BADGES.filter(b => b[3](h, s, R)), xp = h.length * 10 + got.length * 25;
+  $('#hStreak').textContent = `🔥 ${s}-day streak`;
+  $('#hXp').textContent = `Level ${Math.floor(xp / 100) + 1}, ${xp} XP`;
+  $('#rewards').innerHTML = `<h2>Mission health rewards</h2>
+    <p class="mb-2">Log every day to keep your streak. Each entry earns 10 XP and each badge 25 XP.</p>
+    <div class="bar mb-1"><i style="width:${xp % 100}%"></i></div>
+    <p class="mb-4 !text-xs">${100 - (xp % 100)} XP to level ${Math.floor(xp / 100) + 2}</p>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${BADGES.map(b => `
+      <div class="badge ${got.includes(b) ? '' : 'off'}"><div class="text-2xl">${b[0]}</div>
+      <div class="text-sm font-semibold">${b[1]}</div><div class="text-xs text-slate-400">${b[2]}</div></div>`).join('')}</div>`;
+}
+
+/* Charts */
+Chart.defaults.color = '#8b9bc4'; Chart.defaults.borderColor = '#1f2b55'; Chart.defaults.font.family = '"IBM Plex Sans", system-ui, sans-serif';
+const ln = (label, data, c, x = {}) => ({ label, data, borderColor: c, backgroundColor: c, tension: 0.3, pointRadius: 3, ...x });
+function charts(h) {
+  const L = h.map(e => e.date.slice(5)), f = F.find(x => x.k === metric), band = i => L.map(() => f.b[i]), opt = { aspectRatio: 2.6 };
+  vc && vc.destroy(); wc && wc.destroy();
+  vc = new Chart($('#vc'), { type: 'line', options: opt, data: { labels: L, datasets: [
+    ln(`${f.l} (${f.u})`, h.map(e => e[metric]), '#60a5fa'),
+    ln('Normal min', band(0), '#10b98188', { borderDash: [5, 5], pointRadius: 0 }),
+    ln('Normal max', band(1), '#10b98188', { borderDash: [5, 5], pointRadius: 0, fill: '-1', backgroundColor: '#10b98120' })] } });
+  wc = new Chart($('#wc'), { type: 'line', options: opt, data: { labels: L, datasets: [
+    ln('Sleep (h)', h.map(e => e.sleep), '#a78bfa'), ln('Mood (1 to 5)', h.map(e => e.mood), '#fbbf24'), ln('Fatigue (1 to 10)', h.map(e => e.fat), '#fb7185')] } });
+}
+
+/* Navigation and form */
+function show(t) {
+  tab = t;
+  $$('main > section').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + t));
+  $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  if (t === 'log') charts(load());
+}
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2500); };
+
+$$('.tab').forEach(b => (b.onclick = () => show(b.dataset.tab)));
+$$('#body [data-sys]').forEach(el => {
+  el.setAttribute('tabindex', 0); el.setAttribute('role', 'button'); el.setAttribute('aria-label', SYS[el.dataset.sys].n);
+  el.innerHTML = `<title>${SYS[el.dataset.sys].n}</title>`;
+  el.onclick = () => { sel = el.dataset.sys; render(); };
+  el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); } };
+});
+$('#fields').innerHTML = `<div><label for="date">Date</label><input id="date" type="date" value="${iso()}" required></div>` +
+  F.map(f => `<div><label for="f_${f.k}">${f.l} (${f.u})</label><input id="f_${f.k}" type="number" required min="${f.min}" max="${f.max}" step="${f.step}" placeholder="${f.b[0]} to ${f.b[1]}"></div>`).join('');
+$('#metrics').innerHTML = F.map(f => `<button type="button" class="metric ${f.k === metric ? 'on' : ''}" data-k="${f.k}">${f.l}</button>`).join('');
+$$('.metric').forEach(b => (b.onclick = () => { metric = b.dataset.k; $$('.metric').forEach(x => x.classList.toggle('on', x === b)); charts(load()); }));
+
+$('#form').onsubmit = ev => {
+  ev.preventDefault();
+  const e = { date: $('#date').value };
+  F.forEach(f => (e[f.k] = +$('#f_' + f.k).value));
+  const nb = () => { const x = load(); return BADGES.filter(b => b[3](x, streak(x), R)).length; }, b0 = nb();
+  const h = load().filter(x => x.date !== e.date); h.push(e); save(h);
+  ev.target.reset(); $('#date').value = iso(); render();
+  const nw = nb() - b0;
+  toast(nw > 0 ? `🏅 ${nw} new badge${nw > 1 ? 's' : ''} unlocked! +10 XP` : 'Entry saved: +10 XP');
+  show(R.A.length ? 'adv' : 'dash');
+};
+const seed = () => {
+  const h = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const p = (13 - i) / 13, j = () => Math.random() - 0.5;
+    h.push({ date: iso(d), hr: Math.round(62 + 16 * p + 4 * j()), sys: Math.round(118 + 18 * p + 4 * j()), dia: Math.round(76 + 9 * p + 3 * j()),
+      glu: Math.round(94 + 14 * p + 8 * j()), temp: +(36.7 + 0.3 * j()).toFixed(1), sleep: Math.round((7.6 - 1.9 * p + j()) * 2) / 2,
+      mood: Math.round(4.3 - 2.4 * p), fat: Math.max(1, Math.round(3 + 4.5 * p + 2 * j())), ex: Math.round(125 - 70 * p + 15 * j()), h2o: +(2.9 - p + 0.3 * j()).toFixed(1), rad: i === 5 ? 2.4 : +(0.45 + 0.2 * j()).toFixed(2) });
+  }
+  save(h); render(); toast('Demo mission data loaded');
+};
+$('#demo').onclick = seed;
+$('#exp').onclick = () => {
+  const h = load(), csv = ['date,' + F.map(f => f.k).join(',')].concat(h.map(e => [e.date, ...F.map(f => e[f.k])].join(','))).join('\n');
+  Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'vitalorbit-report.csv' }).click();
+};
+$('#clr').onclick = () => { if (confirm('Warning: this permanently deletes all logged health data on this device. Continue?')) { try { localStorage.removeItem(KEY); } catch {} render(); } };
+
+render();
+</script>
+</body>
+</html>
